@@ -4,7 +4,7 @@
   </div>
 </h3>
 <div>
-  <%= textilizable project.short_description.gsub(/\!.+\!/,""), :project => project %>  
+  <%= textilizable project.short_description.gsub(/\!.+\!/,"").gsub(/{{child_pages.*}}/,""), :project => project %>
   <% if(!project.children.empty?) %>
     <div class="accordion">
       <% project.children.each do |child| %>
@@ -13,4 +13,3 @@
     </div>
   <%- end %>
 </div>
-
