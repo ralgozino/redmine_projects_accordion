@@ -18,54 +18,75 @@
 <% end %>
 
 <div class="splitcontentleft">
+  <% if @project.description.present? %>
   <div class="wiki">
     <%= textilizable @project.description %>
   </div>
+  <% end %>
+  <% if @project.homepage.present? || @project.visible_custom_field_values.any?(&:present?) %>
   <ul>
   <% unless @project.homepage.blank? %>
-    <li><%=l(:field_homepage)%>: <%= link_to h(@project.homepage), @project.homepage %></li>
+    <li><span class="label"><%=l(:field_homepage)%>:</span> <%= link_to_if uri_with_safe_scheme?(@project.homepage), @project.homepage, @project.homepage %></li>
   <% end %>
-  <% ids = [] %>
+  <% render_custom_field_values(@project) do |custom_field, formatted| %>
+    <li><span class="label"><%= custom_field.name %>:</span> <%= formatted %></li>
+  <% end %>
+  </ul>
+  <% end %>
+  
   <% if @subprojects.any? %>
-    <% #@subprojects.delete_if { |p| !p.active? } -%>
     <% ids = @subprojects.map { |p| p.id unless p.children.empty? } %>
+    
     <% ids.delete_if { |p| p.nil? } %>
-
-    <% #@subprojects.delete_if { |p| !p.parent_id.nil? } -%>
 
     <ul class="accordion">
       <% for project in @subprojects %>
         <%= render :partial => "list", :locals => { :project => project } %>
       <%- end %>
     </ul>
+    <br>
   <% end %>
-  <% @project.visible_custom_field_values.each do |custom_value| %>
-    <% if !custom_value.value.blank? %>
-       <li><%=h custom_value.custom_field.name %>: <%=h show_value(custom_value) %></li>
-    <% end %>
-  <% end %>
-  </ul>
 
   <% if User.current.allowed_to?(:view_issues, @project) %>
   <div class="issues box">
     <h3><%=l(:label_issue_tracking)%></h3>
-    <ul>
-    <% for tracker in @trackers %>
-      <li><%= link_to h(tracker.name), :controller => 'issues', :action => 'index', :project_id => @project,
-                                                :set_filter => 1,
-                                                "tracker_id" => tracker.id %>:
-          <%= l(:label_x_open_issues_abbr_on_total, :count => @open_issues_by_tracker[tracker].to_i,
-                                                    :total => @total_issues_by_tracker[tracker].to_i) %>
-      </li>
+    <% if @trackers.present? %>
+    <table class="list issue-report">
+      <thead>
+        <tr>
+          <th></th>
+          <th><%=l(:label_open_issues_plural)%></th>
+          <th><%=l(:label_closed_issues_plural)%></th>
+          <th><%=l(:label_total)%></th>
+        </tr>
+      </thead>
+      <tbody>
+      <% @trackers.each do |tracker| %>
+        <tr class="<%= cycle("odd", "even") %>">
+          <td class="name">
+            <%= link_to tracker.name, project_issues_path(@project, :set_filter => 1, :tracker_id => tracker.id) %>
+          </td>
+          <td>
+            <%= link_to @open_issues_by_tracker[tracker].to_i, project_issues_path(@project, :set_filter => 1, :tracker_id => tracker.id) %>
+          </td>
+          <td>
+            <%= link_to (@total_issues_by_tracker[tracker].to_i - @open_issues_by_tracker[tracker].to_i), project_issues_path(@project, :set_filter => 1, :tracker_id => tracker.id, :status_id => 'c') %>
+          </td>
+          <td>
+            <%= link_to @total_issues_by_tracker[tracker].to_i, project_issues_path(@project, :set_filter => 1, :tracker_id => tracker.id, :status_id => '*') %>
+          </td>
+        </tr>
+      <% end %>
+      </tbody>
+    </table>
     <% end %>
-    </ul>
     <p>
-      <%= link_to l(:label_issue_view_all), :controller => 'issues', :action => 'index', :project_id => @project, :set_filter => 1 %>
+      <%= link_to l(:label_issue_view_all), project_issues_path(@project, :set_filter => 1) %>
       <% if User.current.allowed_to?(:view_calendar, @project, :global => true) %>
-        | <%= link_to(l(:label_calendar), :controller => 'calendars', :action => 'show', :project_id => @project) %>
+        | <%= link_to l(:label_calendar), project_calendar_path(@project) %>
       <% end %>
       <% if User.current.allowed_to?(:view_gantt, @project, :global => true) %>
-        | <%= link_to(l(:label_gantt), :controller => 'gantts', :action => 'show', :project_id => @project) %>
+        | <%= link_to l(:label_gantt), project_gantt_path(@project) %>
       <% end %>
     </p>
   </div>
@@ -80,20 +101,15 @@
   <div class="news box">
     <h3><%=l(:label_news_latest)%></h3>
     <%= render :partial => 'news/news', :collection => @news %>
-    <p><%= link_to l(:label_news_view_all), :controller => 'news', :action => 'index', :project_id => @project %></p>
+    <p><%= link_to l(:label_news_view_all), project_news_index_path(@project) %></p>
   </div>
   <% end %>
+
   <%= call_hook(:view_projects_show_right, :project => @project) %>
 </div>
 
 <% content_for :sidebar do %>
-    <% if @total_hours.present? %>
-    <h3><%= l(:label_spent_time) %></h3>
-    <p><span class="icon icon-time"><%= l_hours(@total_hours) %></span></p>
-    <p><%= link_to(l(:label_details), project_time_entries_path(@project)) %> |
-    <%= link_to(l(:label_report), report_project_time_entries_path(@project)) %></p>
-    <% end %>
-    <%= call_hook(:view_projects_show_sidebar_bottom, :project => @project) %>
+  <%= render :partial => 'projects/sidebar' %>
 <% end %>
 
 <% content_for :header_tags do %>

@@ -3,28 +3,25 @@
 <% end %>
 
 <div class="contextual">
-    <%= link_to(l(:label_project_new), {:controller => 'projects', :action => 'new'}, :class => 'icon icon-add') if User.current.allowed_to?(:add_project, nil, :global => true) %>
-    <%= link_to(l(:label_issue_view_all), issues_path) if User.current.allowed_to?(:view_issues, nil, :global => true) %>
-    <%= link_to(l(:label_overall_spent_time), time_entries_path) if User.current.allowed_to?(:view_time_entries, nil, :global => true) %>
-    <%= link_to l(:label_overall_activity),
-                { :controller => 'activities', :action => 'index',
-                  :id => nil } %>
+    <%= render_project_action_links %>
 </div>
 
-<h2><%=l(:label_project_plural)%></h2>
+<h2><%= l(:label_project_plural) %></h2>
 
-<% @projects.delete_if { |p| !p.active? } -%>
-
-<% ids = @projects.map { |p| p.id } %> 
-<%- #unless p.children.empty? } %>
-<% ids.delete_if { |p| p.nil? } %>
-
-<% @projects.delete_if { |p| !p.parent_id.nil? } -%>
-
-<div class="accordion">
-  <% for project in @projects %>
-    <%= render :partial => "list", :locals => { :project => project } %>
-  <%- end %>
+<div id="projects-index">
+	<% @projects.delete_if { |p| !p.active? } -%>
+	
+	<% ids = @projects.map { |p| p.id } %> 
+	
+	<% ids.delete_if { |p| p.nil? } %>
+	
+	<% @projects.delete_if { |p| !p.parent_id.nil? } -%>
+	
+	<div class="accordion">
+	  <% for project in @projects %>
+	    <%= render :partial => "list", :locals => { :project => project } %>
+	  <%- end %>
+	</div>
 </div>
 
 <% if User.current.logged? %>
@@ -35,6 +32,14 @@
 
 <% other_formats_links do |f| %>
   <%= f.link_to 'Atom', :url => {:key => User.current.rss_key} %>
+<% end %>
+
+<% content_for :sidebar do %>
+  <%= form_tag({}, :method => :get) do %>
+    <h3><%= l(:label_project_plural) %></h3>
+    <label for="closed"><%= check_box_tag 'closed', 1, params[:closed] %> <%= l(:label_show_closed_projects) %></label>
+    <p><%= submit_tag l(:button_apply), :class => 'button-small', :name => nil %></p>
+  <% end %>
 <% end %>
 
 <% html_title(l(:label_project_plural)) -%>
@@ -51,4 +56,3 @@ $(".accordion h3 a.project").click(function() {
   return false;
 });
 </script>
-	
